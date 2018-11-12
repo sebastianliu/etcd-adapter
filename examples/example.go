@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/sebastianliu/etcd-adapter"
 	"github.com/casbin/casbin"
+	"github.com/sebastianliu/etcd-adapter"
 )
 
 func main() {

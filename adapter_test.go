@@ -1,9 +1,9 @@
 package etcdadapter
 
 import (
-	"testing"
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/util"
+	"testing"
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {

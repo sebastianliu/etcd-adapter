@@ -1,22 +1,21 @@
-
 // etcdadapter will simulate the table structure of Relational DB in ETCD which is a kv-based storage.
 // Under a basic path, we will build a key for each policy, and the value is the Json format string for each Casbin Rule.
 
 package etcdadapter
 
 import (
-	"time"
-	"runtime"
 	"context"
-	"errors"
 	"encoding/json"
-	"strings"
+	"errors"
 	"fmt"
 	"regexp"
+	"runtime"
+	"strings"
+	"time"
 
 	"github.com/casbin/casbin/model"
-	client "github.com/coreos/etcd/clientv3"
 	"github.com/casbin/casbin/persist"
+	client "github.com/coreos/etcd/clientv3"
 )
 
 const (
@@ -33,10 +32,10 @@ const (
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
 	DIALKEEPALIVETIMEOUT = 10 * time.Second
 
-    // PLACEHOLDER represent the NULL value in the Casbin Rule.
+	// PLACEHOLDER represent the NULL value in the Casbin Rule.
 	PLACEHOLDER = "_"
 
-    // DEFAULT_KEY is the root path in ETCD, if not provided.
+	// DEFAULT_KEY is the root path in ETCD, if not provided.
 	DEFAULT_KEY = "casbin_policy"
 )
 
@@ -216,7 +215,7 @@ func (a *Adapter) convertRule(ptype string, line []string) (rule CasbinRule) {
 		policys = append(policys, line[5])
 	}
 
-	for i := 0; i < 6 - length; i++ {
+	for i := 0; i < 6-length; i++ {
 		policys = append(policys, PLACEHOLDER)
 	}
 
