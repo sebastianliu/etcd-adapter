@@ -6,7 +6,13 @@ go:
   - tip
 
 before_install:
+  - echo $TRAVIS_GO_VERSION
   - go get github.com/mattn/goveralls
+  
+install:
+  - go get -u github.com/golang/dep/...
+  - dep ensure
 
 script:
+  - go test -v
   - $HOME/gopath/bin/goveralls -service=travis-ci
