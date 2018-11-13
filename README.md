@@ -1,5 +1,6 @@
-# etcd-adapter
+etcd-adapter
 ====
+
 [![Build Status](https://travis-ci.org/sebastianliu/etcd-adapter.svg?branch=master)](https://travis-ci.org/sebastianliu/etcd-adapter)
 [![Coverage Status](https://coveralls.io/repos/github/sebastianliu/etcd-adapter/badge.svg)](https://coveralls.io/github/sebastianliu/etcd-adapter)
 
