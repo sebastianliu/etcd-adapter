@@ -1,9 +1,10 @@
 package etcdadapter
 
 import (
-	"github.com/casbin/casbin"
-	"github.com/casbin/casbin/util"
 	"testing"
+
+	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/util"
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
@@ -21,9 +22,9 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 func initPolicy(t *testing.T, pathKey string, etcdEndpoints []string) {
 	// Because the ETCD is empty at first,
 	// so we need to load the policy from the file adapter (.CSV) first.
-	e := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
 
-	a := NewAdapter(etcdEndpoints, pathKey)
+	a, _ := NewAdapter(etcdEndpoints, pathKey)
 	// This is a trick to save the current policy to the ETCD.
 	// We can't call e.SavePolicy() because the adapter in the enforcer is still the file adapter.
 	// The current policy means the policy in the Casbin enforcer (aka in memory).
@@ -53,8 +54,8 @@ func testSaveLoad(t *testing.T, pathKey string, etcdEndpoints []string) {
 	// Now the ETCD has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-	a := NewAdapter(etcdEndpoints, pathKey)
-	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	a, _ := NewAdapter(etcdEndpoints, pathKey)
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
@@ -67,8 +68,8 @@ func testAutoSave(t *testing.T, pathKey string, etcdEndpoints []string) {
 	// Now the ETCD has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-	a := NewAdapter(etcdEndpoints, pathKey)
-	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	a, _ := NewAdapter(etcdEndpoints, pathKey)
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
 	// AutoSave is enabled by default.
 	// Now we disable it.

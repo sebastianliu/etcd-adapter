@@ -1,28 +1,42 @@
 package main
 
 import (
-	"github.com/casbin/casbin"
-	"github.com/sebastianliu/etcd-adapter"
+	"log"
+
+	"github.com/batchcorp/etcd-adapter"
+	"github.com/casbin/casbin/v2"
 )
 
 func main() {
 	// Initialize a casbin etcd adapter and use it in a Casbin enforcer:
 	// The adapter will use the ETCD and a named path with the key you give.
 	// If not provided, the adapter will use the default value casbin_policy.
-	a := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test") // Your etcd endpoints and the path key.
+	a, err := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test") // Your etcd endpoints and the path key.
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 
-	e := casbin.NewEnforcer("rbac_model.conf", a)
+	e, err := casbin.NewEnforcer("rbac_model.conf", a)
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 
 	// Load the policy from ETCD.
-	e.LoadPolicy()
+	if err := e.LoadPolicy(); err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 
 	// Check the permission.
-	e.Enforce("alice", "data1", "read")
+	if _, err := e.Enforce("alice", "data1", "read"); err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 
 	// Modify the policy.
 	// e.AddPolicy(...)
 	// e.RemovePolicy(...)
 
 	// Save the policy back to DB.
-	e.SavePolicy()
+	if err := e.SavePolicy(); err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
 }

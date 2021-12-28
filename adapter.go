@@ -6,37 +6,37 @@ package etcdadapter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/casbin/casbin/model"
-	"github.com/casbin/casbin/persist"
-	client "github.com/coreos/etcd/clientv3"
+	"github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
+	"github.com/pkg/errors"
+	client "go.etcd.io/etcd/client/v3"
 )
 
 const (
 	// DialTimeout is the timeout for failing to establish a connection.
-	DIALTIMEOUT = 5 * time.Second
+	DialTimeout = 5 * time.Second
 
 	// DialKeepAliveTime is the time after which client pings the server to see if
 	// transport is alive.
-	DIALKEEPALIVETIME = 5 * time.Second
+	DialKeepAliveTime = 5 * time.Second
 
-	REQUESTTIMEOUT = 5 * time.Second
+	RequestTimeout = 5 * time.Second
 
 	// DialKeepAliveTimeout is the time that the client waits for a response for the
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
-	DIALKEEPALIVETIMEOUT = 10 * time.Second
+	DialKeepAliveTimeout = 10 * time.Second
 
-	// PLACEHOLDER represent the NULL value in the Casbin Rule.
-	PLACEHOLDER = "_"
+	// Placeholder represent the NULL value in the Casbin Rule.
+	Placeholder = "_"
 
-	// DEFAULT_KEY is the root path in ETCD, if not provided.
-	DEFAULT_KEY = "casbin_policy"
+	// DefaultKey is the root path in ETCD, if not provided.
+	DefaultKey = "casbin_policy"
 )
 
 type CasbinRule struct {
@@ -59,39 +59,41 @@ type Adapter struct {
 	conn *client.Client
 }
 
-func NewAdapter(etcdEndpoints []string, key string) *Adapter {
-	return newAdapter(etcdEndpoints, key)
-}
-
-func newAdapter(etcdEndpoints []string, key string) *Adapter {
+func NewAdapter(etcdEndpoints []string, key string) (*Adapter, error) {
 	if key == "" {
-		key = DEFAULT_KEY
+		key = DefaultKey
 	}
 	a := &Adapter{
 		etcdEndpoints: etcdEndpoints,
 		key:           key,
 	}
-	a.connect()
+
+	if err := a.connect(); err != nil {
+		return nil, err
+	}
 
 	// Call the destructor when the object is released.
 	runtime.SetFinalizer(a, finalizer)
 
-	return a
+	return a, nil
 }
 
-func (a *Adapter) connect() {
+func (a *Adapter) connect() error {
 	etcdConf := client.Config{
 		Endpoints:            a.etcdEndpoints,
-		DialTimeout:          DIALTIMEOUT,
-		DialKeepAliveTimeout: DIALKEEPALIVETIMEOUT,
-		DialKeepAliveTime:    DIALKEEPALIVETIME,
+		DialTimeout:          DialTimeout,
+		DialKeepAliveTimeout: DialKeepAliveTimeout,
+		DialKeepAliveTime:    DialKeepAliveTime,
 	}
 
 	connection, err := client.New(etcdConf)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "Failed to connect to etcd")
 	}
+
 	a.conn = connection
+
+	return nil
 }
 
 // finalizer is the destructor for Adapter.
@@ -106,7 +108,7 @@ func (a *Adapter) close() {
 // LoadPolicy loads all of policys from ETCD
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var rule CasbinRule
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	getResp, err := a.conn.Get(ctx, a.getRootKey(), client.WithPrefix())
 	if err != nil {
@@ -154,7 +156,7 @@ func (a *Adapter) loadPolicy(rule CasbinRule, model model.Model) {
 	persist.LoadPolicyLine(lineText, model)
 }
 
-// This will rewrite all of policies in ETCD with the current data in Casbin
+// SavePolicy will rewrite all of policies in ETCD with the current data in Casbin
 func (a *Adapter) SavePolicy(model model.Model) error {
 	// clean old rule data
 	a.destroy()
@@ -178,7 +180,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 // destroy or clean all of policy
 func (a *Adapter) destroy() error {
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	_, err := a.conn.Delete(ctx, a.getRootKey(), client.WithPrefix())
 	return err
@@ -216,7 +218,7 @@ func (a *Adapter) convertRule(ptype string, line []string) (rule CasbinRule) {
 	}
 
 	for i := 0; i < 6-length; i++ {
-		policys = append(policys, PLACEHOLDER)
+		policys = append(policys, Placeholder)
 	}
 
 	rule.Key = strings.Join(policys, "::")
@@ -225,7 +227,7 @@ func (a *Adapter) convertRule(ptype string, line []string) (rule CasbinRule) {
 }
 
 func (a *Adapter) savePolicy(rules []CasbinRule) error {
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	for _, rule := range rules {
 		ruleData, _ := json.Marshal(rule)
@@ -245,7 +247,7 @@ func (a *Adapter) constructPath(key string) string {
 // Part of the Auto-Save feature.
 func (a *Adapter) AddPolicy(sec string, ptype string, line []string) error {
 	rule := a.convertRule(ptype, line)
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	ruleData, _ := json.Marshal(rule)
 	_, err := a.conn.Put(ctx, a.constructPath(rule.Key), string(ruleData))
@@ -256,7 +258,7 @@ func (a *Adapter) AddPolicy(sec string, ptype string, line []string) error {
 // Part of the Auto-Save feature.
 func (a *Adapter) RemovePolicy(sec string, ptype string, line []string) error {
 	rule := a.convertRule(ptype, line)
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	_, err := a.conn.Delete(ctx, a.constructPath(rule.Key))
 	return err
@@ -340,7 +342,7 @@ func (a *Adapter) constructFilter(rule CasbinRule) string {
 }
 
 func (a *Adapter) removeFilteredPolicy(filter string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), REQUESTTIMEOUT)
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 	defer cancel()
 	// get all policy key
 	getResp, err := a.conn.Get(ctx, a.constructPath(""), client.WithPrefix(), client.WithKeysOnly())
