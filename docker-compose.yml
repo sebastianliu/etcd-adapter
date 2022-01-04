@@ -1,0 +1,26 @@
+version: "3"
+services:
+  etcd:
+    image: bitnami/etcd:3
+    ports:
+      - 2379:2379
+      - 2380:2380
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    volumes:
+      - ./data/etcd:/bitnami
+      - ./assets/etcd.conf.yml:/opt/bitnami/etcd/conf/etcd.conf.yml
+    container_name: etcd
+
+  etcd-auth:
+    image: bitnami/etcd:3
+    ports:
+      - 2379:2379
+      - 2380:2380
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    volumes:
+      - ./data/etcd:/bitnami
+      - ./assets/etcd-auth.conf.yml:/opt/bitnami/etcd/conf/etcd.conf.yml
+      - ./assets/ssl/:/opt/bitnami/etcd/conf/ssl/
+    container_name: etcd-auth

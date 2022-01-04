@@ -19,12 +19,12 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 	t.Log("Test pass")
 }
 
-func initPolicy(t *testing.T, pathKey string, etcdEndpoints []string) {
+func initPolicy(t *testing.T, pathKey string, etcdEndpoints []string, authConfig *AuthConfig) {
 	// Because the ETCD is empty at first,
 	// so we need to load the policy from the file adapter (.CSV) first.
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
 
-	a, _ := NewAdapter(etcdEndpoints, pathKey)
+	a, _ := NewAdapter(etcdEndpoints, pathKey, authConfig)
 	// This is a trick to save the current policy to the ETCD.
 	// We can't call e.SavePolicy() because the adapter in the enforcer is still the file adapter.
 	// The current policy means the policy in the Casbin enforcer (aka in memory).
@@ -45,30 +45,30 @@ func initPolicy(t *testing.T, pathKey string, etcdEndpoints []string) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
-func testSaveLoad(t *testing.T, pathKey string, etcdEndpoints []string) {
+func testSaveLoad(t *testing.T, pathKey string, etcdEndpoints []string, authConfig *AuthConfig) {
 	// Initialize some policy in ETCD.
-	initPolicy(t, pathKey, etcdEndpoints)
+	initPolicy(t, pathKey, etcdEndpoints, authConfig)
 	// Note: you don't need to look at the above code
 	// if you already have a working ETCD with policy inside.
 
 	// Now the ETCD has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-	a, _ := NewAdapter(etcdEndpoints, pathKey)
+	a, _ := NewAdapter(etcdEndpoints, pathKey, nil)
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
-func testAutoSave(t *testing.T, pathKey string, etcdEndpoints []string) {
+func testAutoSave(t *testing.T, pathKey string, etcdEndpoints []string, authConfig *AuthConfig) {
 	// Initialize some policy in ETCD.
-	initPolicy(t, pathKey, etcdEndpoints)
+	initPolicy(t, pathKey, etcdEndpoints, authConfig)
 	// Note: you don't need to look at the above code
 	// if you already have a working ETCD with policy inside.
 
 	// Now the ETCD has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-	a, _ := NewAdapter(etcdEndpoints, pathKey)
+	a, _ := NewAdapter(etcdEndpoints, pathKey, nil)
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
 	// AutoSave is enabled by default.
@@ -108,7 +108,12 @@ func testAutoSave(t *testing.T, pathKey string, etcdEndpoints []string) {
 }
 
 func TestAdapters(t *testing.T) {
+	testSaveLoad(t, "casbin_policy_test", []string{"http://127.0.0.1:2379"}, nil)
+	testAutoSave(t, "casbin_policy_test", []string{"http://127.0.0.1:2379"}, nil)
+}
 
-	testSaveLoad(t, "casbin_policy_test", []string{"http://127.0.0.1:2379"})
-	testAutoSave(t, "casbin_policy_test", []string{"http://127.0.0.1:2379"})
+func TestAdaptersTLS(t *testing.T) {
+
+	testSaveLoad(t, "casbin_policy_test_tls", []string{"http://127.0.0.1:2379"}, nil)
+	testAutoSave(t, "casbin_policy_test_tls", []string{"http://127.0.0.1:2379"}, nil)
 }

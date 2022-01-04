@@ -15,6 +15,7 @@ This version has a few quality of life updates:
 2. Use "go.etcd.io/etcd/client/v3" instead of the github pkg
 3. Use casbin/v2 (as v1 casbin panic's instead of returning errors)
 4. Updated lib to no longer panic on bad instantiation
+5. Support etcd auth 
 
 ## Overview
 
@@ -25,7 +26,12 @@ ETCD adapter is the policy storage adapter for [Casbin](https://github.com/casbi
 go get github.com/batchcorp/etcd-adapter
 ```
 
-## Sample Example
+## Auth
+
+If your etcd is setup with TLS and/or username/pass auth, you can pass an
+optional `AuthConfig`.
+
+## Example
 ```go
 package main
 
@@ -39,7 +45,7 @@ func main() {
 	// The adapter will use the ETCD and a named path with the key you give.
 	// If not provided, the adapter will try to use the default value casbin_policy.
 	// If you have namespace to distinguish keys in your etcd, you can use your_namespace/casbin_root_path
-	a := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test") // Your etcd endpoints and the path key.
+	a, _ := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test", nil) // Your etcd endpoints and the path key.
 
 	e, _ := casbin.NewEnforcer("rbac_model.conf", a)
 

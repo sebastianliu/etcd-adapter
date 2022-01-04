@@ -5,6 +5,8 @@ package etcdadapter
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -55,17 +57,33 @@ type Adapter struct {
 	etcdEndpoints []string
 	key           string
 
+	authConfig *AuthConfig
+
 	// etcd connection client
 	conn *client.Client
 }
 
-func NewAdapter(etcdEndpoints []string, key string) (*Adapter, error) {
+type AuthConfig struct {
+	UseTLS bool
+
+	// Not used if UseTLS is false
+	CACert     string
+	ClientKey  string
+	ClientCert string
+
+	// Not used if username or password empty
+	Username string
+	Password string
+}
+
+func NewAdapter(etcdEndpoints []string, key string, authConfig *AuthConfig) (*Adapter, error) {
 	if key == "" {
 		key = DefaultKey
 	}
 	a := &Adapter{
 		etcdEndpoints: etcdEndpoints,
 		key:           key,
+		authConfig:    authConfig,
 	}
 
 	if err := a.connect(); err != nil {
@@ -86,6 +104,22 @@ func (a *Adapter) connect() error {
 		DialKeepAliveTime:    DialKeepAliveTime,
 	}
 
+	if a.authConfig != nil {
+		if a.authConfig.UseTLS {
+			tlsConfig, err := createTLSConfig(a.authConfig.CACert, a.authConfig.ClientCert, a.authConfig.ClientKey)
+			if err != nil {
+				return errors.Wrap(err, "unable to create TLS config")
+			}
+
+			etcdConf.TLS = tlsConfig
+		}
+
+		if a.authConfig.Username != "" && a.authConfig.Password != "" {
+			etcdConf.Username = a.authConfig.Username
+			etcdConf.Password = a.authConfig.Password
+		}
+	}
+
 	connection, err := client.New(etcdConf)
 	if err != nil {
 		return errors.Wrap(err, "Failed to connect to etcd")
@@ -94,6 +128,21 @@ func (a *Adapter) connect() error {
 	a.conn = connection
 
 	return nil
+}
+
+func createTLSConfig(caCert, clientCert, clientKey string) (*tls.Config, error) {
+	cert, err := tls.X509KeyPair([]byte(clientCert), []byte(clientKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to load cert + key")
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(caCert))
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+	}, nil
 }
 
 // finalizer is the destructor for Adapter.

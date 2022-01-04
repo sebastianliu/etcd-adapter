@@ -11,7 +11,7 @@ func main() {
 	// Initialize a casbin etcd adapter and use it in a Casbin enforcer:
 	// The adapter will use the ETCD and a named path with the key you give.
 	// If not provided, the adapter will use the default value casbin_policy.
-	a, err := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test") // Your etcd endpoints and the path key.
+	a, err := etcdadapter.NewAdapter([]string{"http://127.0.0.1:2379"}, "casbin_policy_test", nil)
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
 	}
