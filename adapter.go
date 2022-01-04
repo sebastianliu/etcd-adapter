@@ -66,7 +66,7 @@ type Adapter struct {
 type AuthConfig struct {
 	UseTLS bool
 
-	// Not used if UseTLS is false
+	// Contents of the certs/keys (ie. not files); not used if UseTLS is false
 	CACert     string
 	ClientKey  string
 	ClientCert string
